@@ -49,7 +49,8 @@ const ACHIEVEMENT_TYPE_CONFIG: Record<
 const Index: FC<Props> = ({ visible, userId }) => {
   const { t } = useTranslation('translation', { keyPrefix: 'achievement' });
   const [searchParams] = useSearchParams();
-  const page = Number(searchParams.get('page') || 1);
+  const pageParam = Number(searchParams.get('page'));
+  const page = Number.isInteger(pageParam) && pageParam > 0 ? pageParam : 1;
   const pageSize = 20;
 
   const { data, isLoading } = useGetUserAchievementList(

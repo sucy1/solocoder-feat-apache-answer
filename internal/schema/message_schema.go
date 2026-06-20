@@ -42,6 +42,7 @@ type GetMessageResp struct {
 	Title          string          `json:"title"`
 	Content        string          `json:"content"`
 	Status         int             `json:"status"`
+	IsRead         bool            `json:"is_read"`
 	IsFromSystem   bool            `json:"is_from_system"`
 	ConversationID string          `json:"conversation_id"`
 	CreatedAt      int64           `json:"created_at"`

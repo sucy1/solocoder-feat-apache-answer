@@ -21,6 +21,7 @@ package achievement
 
 import (
 	"context"
+	"strconv"
 
 	"github.com/apache/answer/internal/base/constant"
 	"github.com/apache/answer/internal/base/data"
@@ -30,6 +31,7 @@ import (
 	"github.com/apache/answer/internal/repo/achievement"
 	"github.com/apache/answer/internal/schema"
 	"github.com/apache/answer/internal/service/badge"
+	"github.com/apache/answer/internal/service/config"
 	"github.com/apache/answer/internal/service/eventqueue"
 	usercommon "github.com/apache/answer/internal/service/user_common"
 	"github.com/apache/answer/pkg/uid"
@@ -62,6 +64,7 @@ type AchievementService struct {
 	badgeAwardService   *badge.BadgeAwardService
 	userCommon          *usercommon.UserCommon
 	eventQueueService   eventqueue.Service
+	configService       *config.ConfigService
 }
 
 func NewAchievementService(
@@ -71,6 +74,7 @@ func NewAchievementService(
 	badgeAwardService *badge.BadgeAwardService,
 	userCommon *usercommon.UserCommon,
 	eventQueueService eventqueue.Service,
+	configService *config.ConfigService,
 ) *AchievementService {
 	as := &AchievementService{
 		data:              data,
@@ -79,6 +83,7 @@ func NewAchievementService(
 		badgeAwardService: badgeAwardService,
 		userCommon:        userCommon,
 		eventQueueService: eventQueueService,
+		configService:     configService,
 	}
 	eventQueueService.RegisterHandler(as.Handler)
 	return as
@@ -201,6 +206,18 @@ func (as *AchievementService) AddReputation(
 	return as.achievementRepo.AddReputation(ctx, event.UserID, event.Source, event.Reputation, event.Description)
 }
 
+func (as *AchievementService) getMaxBadges(ctx context.Context) int {
+	val, err := as.configService.GetStringValue(ctx, constant.ConfigKeyAchievementMaxBadges)
+	if err != nil || val == "" {
+		return entity.DefaultMaxUserBadges
+	}
+	max, err := strconv.Atoi(val)
+	if err != nil || max <= 0 {
+		return entity.DefaultMaxUserBadges
+	}
+	return max
+}
+
 func (as *AchievementService) AwardBadge(
 	ctx context.Context,
 	event *schema.AchievementBadgeEvent,
@@ -217,7 +234,7 @@ func (as *AchievementService) AwardBadge(
 	if err != nil {
 		return err
 	}
-	if badgeCount >= entity.MaxUserBadges {
+	if int(badgeCount) >= as.getMaxBadges(ctx) {
 		return errors.InternalServer("error.achievement.badge_count_exceed")
 	}
 

@@ -928,3 +928,48 @@ export interface UserAchievementSummary {
   consecutive_login_days: number;
   badges: AchievementBadge[];
 }
+
+export interface Message {
+  id: string;
+  from_user_id: string;
+  from_user_info?: UserInfoBase;
+  to_user_id: string;
+  to_user_info?: UserInfoBase;
+  title: string;
+  content: string;
+  status: number;
+  is_read: boolean;
+  is_from_system: boolean;
+  conversation_id: string;
+  created_at: number;
+}
+
+export interface Conversation {
+  conversation_id: string;
+  last_message: {
+    content: string;
+    created_at: number;
+  };
+  last_message_time: number;
+  unread_count: number;
+  target_user_id: string;
+  target_user_info?: UserInfoBase;
+  other_user: {
+    id: string;
+    username: string;
+    display_name: string;
+    avatar: string;
+  };
+}
+
+export interface MessageBlock {
+  blocked_user_id: string;
+  blocked_user_info?: UserInfoBase;
+  created_at: number;
+}
+
+export interface UnreadMessageCount {
+  total_unread: number;
+  system_unread: number;
+  private_unread: number;
+}

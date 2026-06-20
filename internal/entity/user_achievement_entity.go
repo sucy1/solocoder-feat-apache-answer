@@ -36,7 +36,7 @@ const (
 	AchievementSourceAnswerUpvote  = "answer_upvote"
 )
 
-const MaxUserBadges = 50
+const DefaultMaxUserBadges = 50
 
 type UserAchievement struct {
 	ID          string    `xorm:"not null pk autoincr BIGINT(20) id"`

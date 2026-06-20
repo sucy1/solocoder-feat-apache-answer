@@ -385,6 +385,22 @@ func (qs *QuestionService) AddQuestion(ctx context.Context, req *schema.Question
 	question.PostUpdateTime = now
 	question.Pin = entity.QuestionUnPin
 	question.Show = entity.QuestionShow
+
+	if req.Anonymity {
+		anonymityEnable, err := qs.configService.GetBoolValue(ctx, constant.ConfigKeyAnonymityEnable)
+		if err != nil {
+			return nil, err
+		}
+		if !anonymityEnable {
+			errorlist := make([]*validator.FormErrorField, 0)
+			errorlist = append(errorlist, &validator.FormErrorField{
+				ErrorField: "anonymity",
+				ErrorMsg:   translator.Tr(handler.GetLangByCtx(ctx), reason.AnonymityNotEnabled),
+			})
+			err = errors.BadRequest(reason.AnonymityNotEnabled).WithMsg("Anonymous Q&A feature is not enabled")
+			return errorlist, err
+		}
+	}
 	question.Anonymity = req.Anonymity
 	// question.UpdatedAt = nil
 	err = qs.questionRepo.AddQuestion(ctx, question)
@@ -937,6 +953,22 @@ func (qs *QuestionService) UpdateQuestion(ctx context.Context, req *schema.Quest
 		})
 		err = errors.BadRequest(reason.RequestFormatError).WithMsg("Anonymous questions cannot be made non-anonymous")
 		return errorlist, err
+	}
+
+	if req.Anonymity && !dbinfo.Anonymity {
+		anonymityEnable, err := qs.configService.GetBoolValue(ctx, constant.ConfigKeyAnonymityEnable)
+		if err != nil {
+			return nil, err
+		}
+		if !anonymityEnable {
+			errorlist := make([]*validator.FormErrorField, 0)
+			errorlist = append(errorlist, &validator.FormErrorField{
+				ErrorField: "anonymity",
+				ErrorMsg:   translator.Tr(handler.GetLangByCtx(ctx), reason.AnonymityNotEnabled),
+			})
+			err = errors.BadRequest(reason.AnonymityNotEnabled).WithMsg("Anonymous Q&A feature is not enabled")
+			return errorlist, err
+		}
 	}
 
 	now := time.Now()

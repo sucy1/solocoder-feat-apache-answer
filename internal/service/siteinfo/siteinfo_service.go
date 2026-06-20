@@ -131,7 +131,15 @@ func (s *SiteInfoService) GetSiteTag(ctx context.Context) (resp *schema.SiteTags
 
 // GetSiteQuestion get site questions settings
 func (s *SiteInfoService) GetSiteQuestion(ctx context.Context) (resp *schema.SiteQuestionsResp, err error) {
-	return s.siteInfoCommonService.GetSiteQuestion(ctx)
+	resp, err = s.siteInfoCommonService.GetSiteQuestion(ctx)
+	if err != nil {
+		return nil, err
+	}
+	anonymityEnable, err := s.configService.GetBoolValue(ctx, constant.ConfigKeyAnonymityEnable)
+	if err == nil {
+		resp.AnonymityEnable = anonymityEnable
+	}
+	return resp, nil
 }
 
 // GetSiteAdvanced get site advanced settings
@@ -229,7 +237,13 @@ func (s *SiteInfoService) SaveSiteQuestions(ctx context.Context, req *schema.Sit
 		Content: string(content),
 		Status:  1,
 	}
-	return nil, s.siteInfoRepo.SaveByType(ctx, constant.SiteTypeQuestions, data)
+	if err := s.siteInfoRepo.SaveByType(ctx, constant.SiteTypeQuestions, data); err != nil {
+		return nil, err
+	}
+	if err := s.configService.UpdateConfig(ctx, constant.ConfigKeyAnonymityEnable, fmt.Sprintf("%t", req.AnonymityEnable)); err != nil {
+		return nil, err
+	}
+	return nil, nil
 }
 
 // SaveSiteTags save site tags configuration

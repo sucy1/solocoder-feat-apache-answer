@@ -34,6 +34,7 @@ import (
 	"github.com/apache/answer/internal/service/activity_common"
 	"github.com/apache/answer/internal/service/activityqueue"
 	answercommon "github.com/apache/answer/internal/service/answer_common"
+	"github.com/apache/answer/internal/service/config"
 	collectioncommon "github.com/apache/answer/internal/service/collection_common"
 	"github.com/apache/answer/internal/service/export"
 	"github.com/apache/answer/internal/service/noticequeue"
@@ -72,6 +73,7 @@ type AnswerService struct {
 	reviewService                    *review.ReviewService
 	eventQueueService                eventqueue.Service
 	vectorSyncService                vector_sync.Service
+	configService                    *config.ConfigService
 }
 
 func NewAnswerService(
@@ -93,6 +95,7 @@ func NewAnswerService(
 	reviewService *review.ReviewService,
 	eventQueueService eventqueue.Service,
 	vectorSyncService vector_sync.Service,
+	configService *config.ConfigService,
 ) *AnswerService {
 	return &AnswerService{
 		answerRepo:                       answerRepo,
@@ -113,6 +116,7 @@ func NewAnswerService(
 		reviewService:                    reviewService,
 		eventQueueService:                eventQueueService,
 		vectorSyncService:                vectorSyncService,
+		configService:                    configService,
 	}
 }
 
@@ -262,6 +266,16 @@ func (as *AnswerService) Insert(ctx context.Context, req *schema.AnswerAddReq) (
 		err = errors.BadRequest(reason.AnswerCannotAddByClosedQuestion)
 		return "", err
 	}
+	if req.Anonymity {
+		anonymityEnable, err := as.configService.GetBoolValue(ctx, constant.ConfigKeyAnonymityEnable)
+		if err != nil {
+			return "", err
+		}
+		if !anonymityEnable {
+			return "", errors.BadRequest(reason.AnonymityNotEnabled).WithMsg("Anonymous Q&A feature is not enabled")
+		}
+	}
+
 	insertData := &entity.Answer{}
 	insertData.UserID = req.UserID
 	insertData.OriginalText = req.Content
@@ -371,6 +385,16 @@ func (as *AnswerService) Update(ctx context.Context, req *schema.AnswerUpdateReq
 
 	if answerInfo.Anonymity && !req.Anonymity {
 		return "", errors.BadRequest(reason.RequestFormatError).WithMsg("Anonymous answers cannot be made non-anonymous")
+	}
+
+	if req.Anonymity && !answerInfo.Anonymity {
+		anonymityEnable, err := as.configService.GetBoolValue(ctx, constant.ConfigKeyAnonymityEnable)
+		if err != nil {
+			return "", err
+		}
+		if !anonymityEnable {
+			return "", errors.BadRequest(reason.AnonymityNotEnabled).WithMsg("Anonymous Q&A feature is not enabled")
+		}
 	}
 
 	questionInfo, exist, err := as.questionRepo.GetQuestion(ctx, answerInfo.QuestionID)

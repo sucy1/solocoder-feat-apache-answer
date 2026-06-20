@@ -40,6 +40,7 @@ type MessageRepo interface {
 	GetMessageByID(ctx context.Context, id string) (message *entity.Message, exist bool, err error)
 	GetMessageList(ctx context.Context, userID, conversationID string, page, pageSize int) (messages []*entity.Message, total int64, err error)
 	GetConversationList(ctx context.Context, userID string, page, pageSize int) (conversations []*entity.Message, total int64, err error)
+	GetUnreadCountByConversation(ctx context.Context, userID string) (map[string]int64, error)
 	GetUnreadMessageCount(ctx context.Context, userID string) (total, system, private int64, err error)
 	UpdateMessageStatus(ctx context.Context, id string, status int) error
 	MarkConversationAsRead(ctx context.Context, userID, conversationID string) error
@@ -147,6 +148,32 @@ func (mr *messageRepo) GetConversationList(ctx context.Context, userID string, p
 		err = errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 	}
 	return
+}
+
+func (mr *messageRepo) GetUnreadCountByConversation(ctx context.Context, userID string) (map[string]int64, error) {
+	type UnreadCount struct {
+		ConversationID string `xorm:"conversation_id"`
+		Count          int64  `xorm:"count"`
+	}
+
+	result := make([]UnreadCount, 0)
+	err := mr.data.DB.Context(ctx).
+		Select("conversation_id, COUNT(*) as count").
+		Table("message").
+		Where(builder.Eq{"to_user_id": userID}).
+		Where(builder.Eq{"status": entity.MessageStatusUnread}).
+		Where(builder.Neq{"status": entity.MessageStatusDeleted}).
+		GroupBy("conversation_id").
+		Find(&result)
+	if err != nil {
+		return nil, errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
+	}
+
+	countMap := make(map[string]int64)
+	for _, item := range result {
+		countMap[item.ConversationID] = item.Count
+	}
+	return countMap, nil
 }
 
 func (mr *messageRepo) GetUnreadMessageCount(ctx context.Context, userID string) (total, system, private int64, err error) {

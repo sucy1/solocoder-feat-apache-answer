@@ -109,9 +109,10 @@ type SiteWriteResp SiteWriteReq
 
 // SiteQuestionsReq site questions settings request
 type SiteQuestionsReq struct {
-	MinimumTags    int  `validate:"omitempty,gte=0,lte=5" json:"min_tags"`
-	MinimumContent int  `validate:"omitempty,gte=0,lte=65535" json:"min_content"`
-	RestrictAnswer bool `validate:"omitempty" json:"restrict_answer"`
+	MinimumTags      int  `validate:"omitempty,gte=0,lte=5" json:"min_tags"`
+	MinimumContent   int  `validate:"omitempty,gte=0,lte=65535" json:"min_content"`
+	RestrictAnswer   bool `validate:"omitempty" json:"restrict_answer"`
+	AnonymityEnable  bool `validate:"omitempty" json:"anonymity_enable"`
 }
 
 // SiteAdvancedReq site advanced settings request

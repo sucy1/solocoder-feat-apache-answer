@@ -57,3 +57,7 @@ const (
 	DefaultMaxImageSize      = 4 * 1024 * 1024
 	DefaultMaxAttachmentSize = 8 * 1024 * 1024
 )
+
+const (
+	ConfigKeyAnonymityEnable = "site_info.anonymity_enable"
+)

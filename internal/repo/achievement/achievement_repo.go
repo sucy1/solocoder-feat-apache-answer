@@ -157,7 +157,7 @@ func (ar *achievementRepo) AwardBadge(ctx context.Context, userID, badgeID strin
 			return nil, errors.InternalServer(reason.DatabaseError).WithError(err).WithStack()
 		}
 
-		if badgeCount >= entity.MaxUserBadges {
+		if badgeCount >= entity.DefaultMaxUserBadges {
 			return nil, errors.InternalServer("error.achievement.badge_count_exceed").WithStack()
 		}
 

@@ -83,6 +83,15 @@ func (cs *ConfigService) GetArrayStringValue(ctx context.Context, key string) (v
 	return cf.GetArrayStringValue(), nil
 }
 
+// GetBoolValue get config bool value
+func (cs *ConfigService) GetBoolValue(ctx context.Context, key string) (val bool, err error) {
+	cf, err := cs.configRepo.GetConfigByKey(ctx, key)
+	if err != nil {
+		return false, err
+	}
+	return cf.GetBoolValue(), nil
+}
+
 func (cs *ConfigService) GetJsonConfigByIDAndSetToObject(ctx context.Context, id int, obj any) (err error) {
 	cf, err := cs.configRepo.GetConfigByID(ctx, id)
 	if err != nil {

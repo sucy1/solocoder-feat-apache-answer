@@ -71,3 +71,11 @@ func (c *Config) GetArrayStringValue() []string {
 func (c *Config) GetByteValue() []byte {
 	return []byte(c.Value)
 }
+
+// GetBoolValue get bool value
+func (c *Config) GetBoolValue() bool {
+	if len(c.Value) == 0 {
+		log.Warnf("config value is empty, key: %s, value: %s", c.Key, c.Value)
+	}
+	return c.Value == "true"
+}

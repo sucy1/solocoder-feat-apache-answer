@@ -160,14 +160,16 @@ func (ms *MessageCommon) GetConversationList(ctx context.Context, req *schema.Ge
 		return nil, err
 	}
 
+	unreadCountMap, err := ms.messageRepo.GetUnreadCountByConversation(ctx, req.UserID)
+	if err != nil {
+		return nil, err
+	}
+
 	respList := make([]*schema.GetConversationResp, 0, len(conversations))
 	for _, conv := range conversations {
 		targetUserID := ms.getTargetUserID(req.UserID, conv.FromUserID, conv.ToUserID)
 
-		unreadCount := 0
-		if conv.ToUserID == req.UserID && conv.Status == entity.MessageStatusUnread {
-			unreadCount = 1
-		}
+		unreadCount := int(unreadCountMap[conv.ConversationID])
 
 		resp := &schema.GetConversationResp{
 			ConversationID:  conv.ConversationID,
@@ -320,6 +322,7 @@ func (ms *MessageCommon) getMessageResp(ctx context.Context, msg *entity.Message
 		Title:          msg.Title,
 		Content:        msg.Content,
 		Status:         msg.Status,
+		IsRead:         msg.Status == entity.MessageStatusRead,
 		IsFromSystem:   msg.IsFromSystem,
 		ConversationID: msg.ConversationID,
 		CreatedAt:      msg.CreatedAt.Unix(),
