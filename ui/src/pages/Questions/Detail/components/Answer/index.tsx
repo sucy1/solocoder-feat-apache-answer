@@ -44,6 +44,7 @@ interface Props {
   questionTitle: string;
   isLogged: boolean;
   callback: (type: string) => void;
+  currentUser?: any;
 }
 const Index: FC<Props> = ({
   aid,
@@ -51,6 +52,7 @@ const Index: FC<Props> = ({
   isLogged,
   questionTitle = '',
   callback,
+  currentUser,
   canAccept = false,
 }) => {
   const { t } = useTranslation('translation', {
@@ -117,6 +119,7 @@ const Index: FC<Props> = ({
             updateTime={Number(data.update_time)}
             updateTimePrefix={t('edit')}
             isLogged={isLogged}
+            currentUser={currentUser}
             timelinePath={`/posts/${data.question_id}/${data.id}/timeline`}
           />
         </div>

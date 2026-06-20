@@ -25,6 +25,8 @@ import (
 	"github.com/apache/answer/internal/base/handler"
 	"github.com/apache/answer/internal/entity"
 	"github.com/apache/answer/internal/schema"
+	"github.com/apache/answer/internal/service/role"
+	usercommon "github.com/apache/answer/internal/service/user_common"
 	"github.com/apache/answer/pkg/htmltext"
 	"github.com/apache/answer/pkg/uid"
 )
@@ -56,12 +58,16 @@ type AnswerRepo interface {
 
 // AnswerCommon user service
 type AnswerCommon struct {
-	answerRepo AnswerRepo
+	answerRepo       AnswerRepo
+	userRoleRelService *role.UserRoleRelService
+	userCommon       *usercommon.UserCommon
 }
 
-func NewAnswerCommon(answerRepo AnswerRepo) *AnswerCommon {
+func NewAnswerCommon(answerRepo AnswerRepo, userRoleRelService *role.UserRoleRelService, userCommon *usercommon.UserCommon) *AnswerCommon {
 	return &AnswerCommon{
-		answerRepo: answerRepo,
+		answerRepo:       answerRepo,
+		userRoleRelService: userRoleRelService,
+		userCommon:       userCommon,
 	}
 }
 
@@ -114,8 +120,30 @@ func (as *AnswerCommon) ShowFormat(ctx context.Context, data *entity.Answer) *sc
 	info.UserID = data.UserID
 	info.UpdateUserID = data.LastEditUserID
 	info.Status = data.Status
+	info.Anonymity = data.Anonymity
 	info.MemberActions = make([]*schema.PermissionMemberAction, 0)
 	return &info
+}
+
+func (as *AnswerCommon) HandleAnonymous(ctx context.Context, answerInfo *entity.Answer, loginUserID string, info *schema.AnswerInfo) {
+	if answerInfo.Anonymity {
+		isAdmin := false
+		if len(loginUserID) > 0 {
+			roleID, err := as.userRoleRelService.GetUserRole(ctx, loginUserID)
+			if err == nil && (roleID == role.RoleAdminID || roleID == role.RoleModeratorID) {
+				isAdmin = true
+			}
+		}
+		if loginUserID != answerInfo.UserID && !isAdmin {
+			info.IsAnonymousUser = true
+			info.UserInfo = &schema.UserBasicInfo{
+				Username:    "anonymous",
+				DisplayName: "匿名用户",
+				Avatar:      "",
+				ID:          "0",
+			}
+		}
+	}
 }
 
 func (as *AnswerCommon) AdminShowFormat(ctx context.Context, data *entity.Answer) *schema.AdminAnswerInfo {

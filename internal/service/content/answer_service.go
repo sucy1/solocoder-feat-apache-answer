@@ -271,6 +271,7 @@ func (as *AnswerService) Insert(ctx context.Context, req *schema.AnswerAddReq) (
 	insertData.RevisionID = "0"
 	insertData.LastEditUserID = "0"
 	insertData.Status = entity.AnswerStatusPending
+	insertData.Anonymity = req.Anonymity
 	// insertData.UpdatedAt = now
 	if err = as.answerRepo.AddAnswer(ctx, insertData); err != nil {
 		return "", err
@@ -368,6 +369,10 @@ func (as *AnswerService) Update(ctx context.Context, req *schema.AnswerUpdateReq
 		return "", errors.BadRequest(reason.AnswerCannotUpdate)
 	}
 
+	if answerInfo.Anonymity && !req.Anonymity {
+		return "", errors.BadRequest(reason.RequestFormatError).WithMsg("Anonymous answers cannot be made non-anonymous")
+	}
+
 	questionInfo, exist, err := as.questionRepo.GetQuestion(ctx, answerInfo.QuestionID)
 	if err != nil {
 		return "", err
@@ -389,6 +394,7 @@ func (as *AnswerService) Update(ctx context.Context, req *schema.AnswerUpdateReq
 	insertData.ParsedText = req.HTML
 	insertData.UpdatedAt = time.Now()
 	insertData.LastEditUserID = "0"
+	insertData.Anonymity = req.Anonymity
 	if answerInfo.UserID != req.UserID {
 		insertData.LastEditUserID = req.UserID
 	}
@@ -410,7 +416,7 @@ func (as *AnswerService) Update(ctx context.Context, req *schema.AnswerUpdateReq
 		if err != nil {
 			return "", err
 		}
-		if err = as.answerRepo.UpdateAnswer(ctx, insertData, []string{"original_text", "parsed_text", "updated_at", "last_edit_user_id"}); err != nil {
+		if err = as.answerRepo.UpdateAnswer(ctx, insertData, []string{"original_text", "parsed_text", "updated_at", "last_edit_user_id", "anonymity"}); err != nil {
 			return "", err
 		}
 		err = as.questionCommon.UpdatePostTime(ctx, questionInfo.ID)
@@ -570,11 +576,28 @@ func (as *AnswerService) Get(ctx context.Context, answerID, loginUserID string, 
 		return nil, nil, has, err
 	}
 
-	_, ok := userInfoMap[answerInfo.UserID]
-	if ok {
-		info.UserInfo = userInfoMap[answerInfo.UserID]
+	if answerInfo.Anonymity {
+		if loginUserID != answerInfo.UserID && !isAdminModerator {
+			info.IsAnonymousUser = true
+			info.UserInfo = &schema.UserBasicInfo{
+				Username:    "anonymous",
+				DisplayName: "匿名用户",
+				Avatar:      "",
+				ID:          "0",
+			}
+		} else {
+			_, ok := userInfoMap[answerInfo.UserID]
+			if ok {
+				info.UserInfo = userInfoMap[answerInfo.UserID]
+			}
+		}
+	} else {
+		_, ok := userInfoMap[answerInfo.UserID]
+		if ok {
+			info.UserInfo = userInfoMap[answerInfo.UserID]
+		}
 	}
-	_, ok = userInfoMap[answerInfo.LastEditUserID]
+	_, ok := userInfoMap[answerInfo.LastEditUserID]
 	if ok {
 		info.UpdateUserInfo = userInfoMap[answerInfo.LastEditUserID]
 	}
@@ -702,11 +725,15 @@ func (as *AnswerService) SearchFormatInfo(ctx context.Context, answers []*entity
 	list := make([]*schema.AnswerInfo, 0)
 	objectIDs := make([]string, 0)
 	userIDs := make([]string, 0)
+	answerAnonymityMap := make(map[string]bool)
+	answerUserIDMap := make(map[string]string)
 	for _, info := range answers {
 		item := as.ShowFormat(ctx, info)
 		list = append(list, item)
 		objectIDs = append(objectIDs, info.ID)
 		userIDs = append(userIDs, info.UserID, info.LastEditUserID)
+		answerAnonymityMap[info.ID] = info.Anonymity
+		answerUserIDMap[info.ID] = info.UserID
 	}
 
 	userInfoMap, err := as.userCommon.BatchUserBasicInfoByID(ctx, userIDs)
@@ -714,7 +741,19 @@ func (as *AnswerService) SearchFormatInfo(ctx context.Context, answers []*entity
 		return list, err
 	}
 	for _, item := range list {
-		item.UserInfo = userInfoMap[item.UserID]
+		anonymity := answerAnonymityMap[item.ID]
+		answerUserID := answerUserIDMap[item.ID]
+		if anonymity && req.UserID != answerUserID && !req.IsAdminModerator {
+			item.IsAnonymousUser = true
+			item.UserInfo = &schema.UserBasicInfo{
+				Username:    "anonymous",
+				DisplayName: "匿名用户",
+				Avatar:      "",
+				ID:          "0",
+			}
+		} else {
+			item.UserInfo = userInfoMap[item.UserID]
+		}
 		item.UpdateUserInfo = userInfoMap[item.UpdateUserID]
 	}
 	if len(req.UserID) == 0 {

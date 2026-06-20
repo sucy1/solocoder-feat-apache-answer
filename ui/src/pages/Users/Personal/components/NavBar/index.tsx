@@ -51,6 +51,10 @@ const list = [
     name: 'reputation',
   },
   {
+    path: '/achievements',
+    name: 'achievements',
+  },
+  {
     path: '/comments',
     name: 'comments',
   },

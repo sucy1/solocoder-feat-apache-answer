@@ -21,6 +21,7 @@ package repo
 
 import (
 	"github.com/apache/answer/internal/base/data"
+	"github.com/apache/answer/internal/repo/achievement"
 	"github.com/apache/answer/internal/repo/activity"
 	"github.com/apache/answer/internal/repo/activity_common"
 	"github.com/apache/answer/internal/repo/ai_conversation"
@@ -37,6 +38,7 @@ import (
 	"github.com/apache/answer/internal/repo/export"
 	"github.com/apache/answer/internal/repo/file_record"
 	"github.com/apache/answer/internal/repo/limit"
+	"github.com/apache/answer/internal/repo/message"
 	"github.com/apache/answer/internal/repo/meta"
 	"github.com/apache/answer/internal/repo/notification"
 	"github.com/apache/answer/internal/repo/plugin_config"
@@ -113,4 +115,8 @@ var ProviderSetRepo = wire.NewSet(
 	file_record.NewFileRecordRepo,
 	api_key.NewAPIKeyRepo,
 	ai_conversation.NewAIConversationRepo,
+	tag.NewTagGroupRepo,
+	message.NewMessageRepo,
+	message.NewMessageBlockRepo,
+	achievement.NewAchievementRepo,
 )

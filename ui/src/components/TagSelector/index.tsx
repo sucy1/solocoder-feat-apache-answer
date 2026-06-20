@@ -28,7 +28,7 @@ import classNames from 'classnames';
 
 import { useTagModal, useToast } from '@/hooks';
 import type * as Type from '@/common/interface';
-import { queryTags, useUserPermission } from '@/services';
+import { queryTags, useUserPermission, useQueryTagGroups } from '@/services';
 import { writeSettingStore } from '@/stores';
 
 // import { OutsideClickListener } from '@/components';
@@ -47,6 +47,7 @@ interface IProps {
   tagStyleMode?: 'default' | 'simple';
   formText?: string;
   errMsg?: string;
+  enableGroupView?: boolean;
 }
 
 let timer;
@@ -63,6 +64,7 @@ const TagSelector: FC<IProps> = ({
   formText = '',
   tagStyleMode = 'default',
   errMsg = '',
+  enableGroupView = false,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -74,7 +76,25 @@ const TagSelector: FC<IProps> = ({
   const [searchValue, setSearchValue] = useState<string>('');
   const [tags, setTags] = useState<Type.Tag[] | null>([]);
   const [requiredTags, setRequiredTags] = useState<Type.Tag[] | null>(null);
+  const [groupView, setGroupView] = useState(false);
   const writeInfo = writeSettingStore((state) => state.write);
+
+  const { data: tagGroups, isLoading: groupsLoading } = useQueryTagGroups();
+
+  const processTagGroups = (groups: Type.TagGroup[] | undefined) => {
+    if (!groups) return [];
+    return groups.map((group) => {
+      if (!group.group_id || group.group_id === '') {
+        return {
+          ...group,
+          group_name: '其他',
+        };
+      }
+      return group;
+    });
+  };
+
+  const processedGroups = processTagGroups(tagGroups);
   const { t } = useTranslation('translation', { keyPrefix: 'tag_selector' });
   const { data: userPermission } = useUserPermission('tag.add');
   const canAddTag =
@@ -445,6 +465,19 @@ const TagSelector: FC<IProps> = ({
           </div>
         </div>
         <Dropdown.Menu id="a-dropdown-menu" className="w-100" show={showMenu}>
+          {enableGroupView && !searchValue && (
+            <div className="px-3 py-2 border-bottom">
+              <Form.Check
+                type="switch"
+                id="group-view-switch"
+                label={t('view_by_group')}
+                checked={groupView}
+                onChange={(e) => setGroupView(e.target.checked)}
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
+          )}
+
           {!searchValue &&
             showRequiredTag &&
             tags &&
@@ -452,17 +485,50 @@ const TagSelector: FC<IProps> = ({
               <h6 className="dropdown-header">{t('tag_required_text')}</h6>
             )}
 
-          {tags?.map((item, index) => {
-            return (
-              <Dropdown.Item
-                key={item.slug_name}
-                id={item.slug_name}
-                active={index === currentIndex}
-                onClick={() => handleClick(item)}>
-                {item.display_name}
-              </Dropdown.Item>
-            );
-          })}
+          {groupView && !searchValue && !groupsLoading ? (
+            processedGroups.map((group) => (
+              <div key={group.group_id || group.group_name}>
+                <h6 className="dropdown-header">
+                  {group.group_name}
+                  <span className="ms-1 text-muted small">
+                    ({group.tags?.length || 0})
+                  </span>
+                </h6>
+                {group.tags?.map((item, index) => {
+                  const findIndex = value.findIndex(
+                    (v) =>
+                      v.slug_name.toLowerCase() === item.slug_name.toLowerCase(),
+                  );
+                  if (findIndex !== -1) return null;
+                  return (
+                    <Dropdown.Item
+                      key={item.slug_name}
+                      id={item.slug_name}
+                      onClick={() => handleClick(item)}>
+                      {item.display_name}
+                    </Dropdown.Item>
+                  );
+                })}
+              </div>
+            ))
+          ) : (
+            tags?.map((item, index) => {
+              return (
+                <Dropdown.Item
+                  key={item.slug_name}
+                  id={item.slug_name}
+                  active={index === currentIndex}
+                  onClick={() => handleClick(item)}>
+                  {item.display_name}
+                  {item.group_name && (
+                    <span className="ms-1 text-muted small">
+                      ({item.group_name})
+                    </span>
+                  )}
+                </Dropdown.Item>
+              );
+            })
+          )}
           {searchValue && tags?.length === 0 && (
             <Dropdown.Item disabled className="text-secondary">
               {t('no_result')}

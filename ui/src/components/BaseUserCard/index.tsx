@@ -43,10 +43,16 @@ const Index: FC<Props> = ({
   avatarSearchStr = 's=48',
   showReputation = true,
   nameMaxWidth = '300px',
+  isLogged = false,
 }) => {
+  const isAnonymous = data?.is_anonymous_user;
+  const canSeeRealName = isLogged && (data?.anonymity || data?.role_id === 2);
+  const displayName = isAnonymous && !canSeeRealName ? '匿名用户' : data?.display_name;
+  const showUserLink = data?.status !== 'deleted' && !isAnonymous;
+
   return (
     <div className={`d-flex align-items-center  text-secondary ${className}`}>
-      {data?.status !== 'deleted' ? (
+      {showUserLink ? (
         <Link
           to={`/users/${data?.username}`}
           onClick={(e) => {
@@ -59,31 +65,39 @@ const Index: FC<Props> = ({
               size={avatarSize}
               className={`me-1 ${avatarClass}`}
               searchStr={avatarSearchStr}
-              alt={data?.display_name}
+              alt={displayName}
             />
           )}
           <span
             className="me-1 name-ellipsis"
             style={{ maxWidth: nameMaxWidth }}>
-            {data?.display_name}
+            {displayName}
+            {isAnonymous && canSeeRealName && (
+              <span className="text-muted ms-1">(匿名)</span>
+            )}
           </span>
         </Link>
       ) : (
         <>
           {showAvatar && (
             <Avatar
-              avatar={data?.avatar}
+              avatar={isAnonymous ? '' : data?.avatar}
               size={avatarSize}
               className={`me-1 ${avatarClass}`}
               searchStr={avatarSearchStr}
-              alt={data?.display_name}
+              alt={displayName}
             />
           )}
-          <span className="me-1 name-ellipsis">{data?.display_name}</span>
+          <span className="me-1 name-ellipsis">
+            {displayName}
+            {isAnonymous && canSeeRealName && (
+              <span className="text-muted ms-1">(匿名)</span>
+            )}
+          </span>
         </>
       )}
 
-      {showReputation && (
+      {showReputation && !isAnonymous && (
         <span className="fw-bold" title="Reputation">
           {formatCount(data?.rank)}
         </span>

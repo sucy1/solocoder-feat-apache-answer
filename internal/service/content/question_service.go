@@ -385,6 +385,7 @@ func (qs *QuestionService) AddQuestion(ctx context.Context, req *schema.Question
 	question.PostUpdateTime = now
 	question.Pin = entity.QuestionUnPin
 	question.Show = entity.QuestionShow
+	question.Anonymity = req.Anonymity
 	// question.UpdatedAt = nil
 	err = qs.questionRepo.AddQuestion(ctx, question)
 	if err != nil {
@@ -928,6 +929,16 @@ func (qs *QuestionService) UpdateQuestion(ctx context.Context, req *schema.Quest
 		return nil, err
 	}
 
+	if dbinfo.Anonymity && !req.Anonymity {
+		errorlist := make([]*validator.FormErrorField, 0)
+		errorlist = append(errorlist, &validator.FormErrorField{
+			ErrorField: "anonymity",
+			ErrorMsg:   translator.Tr(handler.GetLangByCtx(ctx), reason.RequestFormatError),
+		})
+		err = errors.BadRequest(reason.RequestFormatError).WithMsg("Anonymous questions cannot be made non-anonymous")
+		return errorlist, err
+	}
+
 	now := time.Now()
 	question := &entity.Question{}
 	question.Title = req.Title
@@ -938,6 +949,7 @@ func (qs *QuestionService) UpdateQuestion(ctx context.Context, req *schema.Quest
 	question.PostUpdateTime = now
 	question.UserID = dbinfo.UserID
 	question.LastEditUserID = req.UserID
+	question.Anonymity = req.Anonymity
 
 	minimumContentLength, err := qs.questioncommon.GetMinimumContentLength(ctx)
 	if err != nil {
@@ -1046,7 +1058,7 @@ func (qs *QuestionService) UpdateQuestion(ctx context.Context, req *schema.Quest
 		if err != nil {
 			return questionInfo, err
 		}
-		saveerr := qs.questionRepo.UpdateQuestion(ctx, question, []string{"title", "original_text", "parsed_text", "updated_at", "post_update_time", "last_edit_user_id"})
+		saveerr := qs.questionRepo.UpdateQuestion(ctx, question, []string{"title", "original_text", "parsed_text", "updated_at", "post_update_time", "last_edit_user_id", "anonymity"})
 		if saveerr != nil {
 			return questionInfo, saveerr
 		}
@@ -1233,17 +1245,45 @@ func (qs *QuestionService) PersonalAnswerPage(ctx context.Context, req *schema.P
 
 	answerlist := make([]*schema.AnswerInfo, 0)
 	userAnswerlist := make([]*schema.UserAnswerInfo, 0)
+	answerUserIDs := make([]string, 0)
+	answerEntityMap := make(map[string]*entity.Answer)
 	for _, item := range answerList {
 		answerinfo := qs.questioncommon.AnswerCommon.ShowFormat(ctx, item)
 		answerlist = append(answerlist, answerinfo)
 		questionIDs = append(questionIDs, uid.DeShortID(item.QuestionID))
+		answerUserIDs = append(answerUserIDs, item.UserID, item.LastEditUserID)
+		answerEntityMap[item.ID] = item
 	}
 	questionMaps, err := qs.questioncommon.FindInfoByID(ctx, questionIDs, req.LoginUserID)
 	if err != nil {
 		return nil, err
 	}
 
+	userInfoMap, err := qs.userCommon.BatchUserBasicInfoByID(ctx, answerUserIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	isAdmin := req.IsAdmin
 	for _, item := range answerlist {
+		answerEntity := answerEntityMap[item.ID]
+		if answerEntity != nil && answerEntity.Anonymity {
+			if req.LoginUserID != answerEntity.UserID && !isAdmin {
+				item.IsAnonymousUser = true
+				item.UserInfo = &schema.UserBasicInfo{
+					Username:    "anonymous",
+					DisplayName: "匿名用户",
+					Avatar:      "",
+					ID:          "0",
+				}
+			} else {
+				item.UserInfo = userInfoMap[item.UserID]
+			}
+		} else {
+			item.UserInfo = userInfoMap[item.UserID]
+		}
+		item.UpdateUserInfo = userInfoMap[item.UpdateUserID]
+
 		_, ok := questionMaps[item.QuestionID]
 		if ok {
 			item.QuestionInfo = questionMaps[item.QuestionID]
@@ -1332,6 +1372,8 @@ func (qs *QuestionService) SearchUserTopList(ctx context.Context, userName strin
 	answersearch.PageSize = 5
 	answersearch.Order = entity.AnswerSearchOrderByVote
 	questionIDs := make([]string, 0)
+	answerUserIDs := make([]string, 0)
+	answerEntityMap := make(map[string]*entity.Answer)
 	answerList, _, err := qs.questioncommon.AnswerCommon.Search(ctx, answersearch)
 	if err != nil {
 		return userQuestionlist, userAnswerlist, err
@@ -1340,12 +1382,46 @@ func (qs *QuestionService) SearchUserTopList(ctx context.Context, userName strin
 		answerinfo := qs.questioncommon.AnswerCommon.ShowFormat(ctx, item)
 		answerlist = append(answerlist, answerinfo)
 		questionIDs = append(questionIDs, item.QuestionID)
+		answerUserIDs = append(answerUserIDs, item.UserID, item.LastEditUserID)
+		answerEntityMap[item.ID] = item
 	}
 	questionMaps, err := qs.questioncommon.FindInfoByID(ctx, questionIDs, loginUserID)
 	if err != nil {
 		return userQuestionlist, userAnswerlist, err
 	}
+
+	userInfoMap, err := qs.userCommon.BatchUserBasicInfoByID(ctx, answerUserIDs)
+	if err != nil {
+		return userQuestionlist, userAnswerlist, err
+	}
+
+	isAdmin := false
+	if len(loginUserID) > 0 {
+		roleID, err := qs.userRoleRelService.GetUserRole(ctx, loginUserID)
+		if err == nil && (roleID == role.RoleAdminID || roleID == role.RoleModeratorID) {
+			isAdmin = true
+		}
+	}
+
 	for _, item := range answerlist {
+		answerEntity := answerEntityMap[item.ID]
+		if answerEntity != nil && answerEntity.Anonymity {
+			if loginUserID != answerEntity.UserID && !isAdmin {
+				item.IsAnonymousUser = true
+				item.UserInfo = &schema.UserBasicInfo{
+					Username:    "anonymous",
+					DisplayName: "匿名用户",
+					Avatar:      "",
+					ID:          "0",
+				}
+			} else {
+				item.UserInfo = userInfoMap[item.UserID]
+			}
+		} else {
+			item.UserInfo = userInfoMap[item.UserID]
+		}
+		item.UpdateUserInfo = userInfoMap[item.UpdateUserID]
+
 		_, ok := questionMaps[item.QuestionID]
 		if ok {
 			item.QuestionInfo = questionMaps[item.QuestionID]

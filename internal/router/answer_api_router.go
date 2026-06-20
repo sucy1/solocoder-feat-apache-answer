@@ -62,6 +62,9 @@ type AnswerAPIRouter struct {
 	aiConversationController      *controller.AIConversationController
 	aiConversationAdminController *controller_admin.AIConversationAdminController
 	mcpController                 *controller.MCPController
+	tagGroupController            *controller.TagGroupController
+	messageController             *controller.MessageController
+	achievementController         *controller.AchievementController
 }
 
 func NewAnswerAPIRouter(
@@ -100,6 +103,9 @@ func NewAnswerAPIRouter(
 	aiConversationController *controller.AIConversationController,
 	aiConversationAdminController *controller_admin.AIConversationAdminController,
 	mcpController *controller.MCPController,
+	tagGroupController *controller.TagGroupController,
+	messageController *controller.MessageController,
+	achievementController *controller.AchievementController,
 ) *AnswerAPIRouter {
 	return &AnswerAPIRouter{
 		langController:                langController,
@@ -137,6 +143,9 @@ func NewAnswerAPIRouter(
 		aiConversationController:      aiConversationController,
 		aiConversationAdminController: aiConversationAdminController,
 		mcpController:                 mcpController,
+		tagGroupController:            tagGroupController,
+		messageController:             messageController,
+		achievementController:         achievementController,
 	}
 }
 
@@ -214,6 +223,16 @@ func (a *AnswerAPIRouter) RegisterUnAuthAnswerAPIRouter(r *gin.RouterGroup) {
 	r.GET("/badge/user/awards/recent", a.badgeController.GetRecentBadgeAwardListByUsername)
 	r.GET("/badge/user/awards", a.badgeController.GetAllBadgeAwardListByUsername)
 	r.GET("/badges", a.badgeController.GetBadgeList)
+
+	// tag group
+	r.GET("/tag/group/with_tags", a.tagGroupController.GetTagGroupWithTags)
+	r.GET("/tag/group/page", a.tagGroupController.GetTagGroupPage)
+	r.GET("/tag/group/list", a.tagGroupController.GetTagGroupList)
+	r.GET("/tag/group", a.tagGroupController.GetTagGroup)
+
+	// achievement
+	r.GET("/achievement/summary", a.achievementController.GetUserAchievementSummary)
+	r.GET("/achievement/list", a.achievementController.GetUserAchievementList)
 }
 
 func (a *AnswerAPIRouter) RegisterAuthUserWithAnyStatusAnswerAPIRouter(r *gin.RouterGroup) {
@@ -331,6 +350,27 @@ func (a *AnswerAPIRouter) RegisterAnswerAPIRouter(r *gin.RouterGroup) {
 	r.GET("/ai/conversation/page", a.aiConversationController.GetConversationList)
 	r.GET("/ai/conversation", a.aiConversationController.GetConversationDetail)
 	r.POST("/ai/conversation/vote", a.aiConversationController.VoteRecord)
+
+	// tag group
+	r.POST("/tag/group", a.tagGroupController.AddTagGroup)
+	r.PUT("/tag/group", a.tagGroupController.UpdateTagGroup)
+	r.DELETE("/tag/group", a.tagGroupController.RemoveTagGroup)
+	r.PUT("/tag/group/tag", a.tagGroupController.UpdateTagGroupForTag)
+
+	// message
+	r.POST("/message", a.messageController.SendMessage)
+	r.GET("/message/page", a.messageController.GetMessageList)
+	r.GET("/message/conversation/page", a.messageController.GetConversationList)
+	r.POST("/message/read", a.messageController.ReadMessage)
+	r.POST("/message/read/all", a.messageController.ReadAllMessage)
+	r.DELETE("/message", a.messageController.DeleteMessage)
+	r.POST("/message/block", a.messageController.BlockUser)
+	r.POST("/message/unblock", a.messageController.UnblockUser)
+	r.GET("/message/block/list", a.messageController.GetBlockedUserList)
+	r.GET("/message/unread/count", a.messageController.GetUnreadMessageCount)
+
+	// achievement
+	r.GET("/achievement/my/summary", a.achievementController.GetMyAchievementSummary)
 }
 
 func (a *AnswerAPIRouter) RegisterAnswerAdminAPIRouter(r *gin.RouterGroup) {

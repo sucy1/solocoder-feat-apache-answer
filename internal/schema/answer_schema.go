@@ -50,6 +50,7 @@ type AnswerAddReq struct {
 	QuestionID  string `json:"question_id"`
 	Content     string `validate:"required,notblank,gte=6,lte=65535" json:"content"`
 	HTML        string `json:"-"`
+	Anonymity   bool   `json:"anonymity"`
 	UserID      string `json:"-"`
 	CanEdit     bool   `json:"-"`
 	CanDelete   bool   `json:"-"`
@@ -82,6 +83,7 @@ type AnswerUpdateReq struct {
 	Content      string `validate:"required,notblank,gte=6,lte=65535" json:"content"`
 	EditSummary  string `validate:"omitempty" json:"edit_summary"`
 	HTML         string `json:"-"`
+	Anonymity    bool   `json:"anonymity"`
 	UserID       string `json:"-"`
 	NoNeedReview bool   `json:"-"`
 	CanEdit      bool   `json:"-"`
@@ -135,6 +137,8 @@ type AnswerInfo struct {
 	VoteCount      int               `json:"vote_count"`
 	QuestionInfo   *QuestionInfoResp `json:"question_info,omitempty"`
 	Status         int               `json:"status"`
+	Anonymity      bool              `json:"anonymity"`
+	IsAnonymousUser bool             `json:"is_anonymous_user"`
 
 	// MemberActions
 	MemberActions []*PermissionMemberAction `json:"member_actions"`

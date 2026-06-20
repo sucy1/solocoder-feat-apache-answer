@@ -30,9 +30,10 @@ import fm from 'front-matter';
 
 import { writeSettingStore } from '@/stores';
 import { usePageTags, usePromptWithUnload } from '@/hooks';
-import { Editor, EditorRef, TagSelector } from '@/components';
+import { Editor, EditorRef, TagSelector, Modal } from '@/components';
 import type * as Type from '@/common/interface';
-import { DRAFT_QUESTION_STORAGE_KEY } from '@/common/constants';
+import { DRAFT_QUESTION_STORAGE_KEY, LOGGED_TOKEN_STORAGE_KEY } from '@/common/constants';
+import Storage from '@/utils/storage';
 import {
   saveQuestion,
   questionDetail,
@@ -59,6 +60,7 @@ interface FormDataItem {
   content: Type.FormValue<string>;
   answer_content: Type.FormValue<string>;
   edit_summary: Type.FormValue<string>;
+  anonymity: Type.FormValue<boolean>;
 }
 
 const saveDraft = new SaveDraft({ type: 'question' });
@@ -90,6 +92,11 @@ const Ask = () => {
       isInvalid: false,
       errorMsg: '',
     },
+    anonymity: {
+      value: false,
+      isInvalid: false,
+      errorMsg: '',
+    },
   };
   const { t } = useTranslation('translation', { keyPrefix: 'ask' });
   const [formData, setFormData] = useState<FormDataItem>(initFormData);
@@ -98,6 +105,8 @@ const Ask = () => {
   const [blockState, setBlockState] = useState(false);
   const [focusType, setForceType] = useState('');
   const [hasDraft, setHasDraft] = useState(false);
+  const [showDraftModal, setShowDraftModal] = useState(false);
+  const [tempDraft, setTempDraft] = useState<any>(null);
   const resetForm = () => {
     setFormData(initFormData);
     setCheckState(false);
@@ -177,7 +186,7 @@ const Ask = () => {
   }, [qid]);
 
   useEffect(() => {
-    const { title, tags, content, answer_content } = formData;
+    const { title, tags, content, answer_content, anonymity } = formData;
     const { title: editTitle, tags: editTags, content: editContent } = immData;
 
     // edited
@@ -210,6 +219,7 @@ const Ask = () => {
           tags: tags.value,
           content: content.value,
           answer_content: answer_content.value,
+          anonymity: anonymity.value,
         },
         callback: () => setHasDraft(true),
       });
@@ -293,6 +303,15 @@ const Ask = () => {
       },
     });
 
+  const handleAnonymityChange = (e: React.ChangeEvent<HTMLInputElement>) =>
+    setFormData({
+      ...formData,
+      anonymity: {
+        ...formData.anonymity,
+        value: e.target.checked,
+      },
+    });
+
   const deleteDraft = () => {
     const res = window.confirm(t('discard_confirm', { keyPrefix: 'draft' }));
     if (res) {
@@ -338,6 +357,7 @@ const Ask = () => {
       params.captcha_code = imgCode.captcha_code;
       params.captcha_id = imgCode.captcha_id;
     }
+    params.anonymity = formData.anonymity.value;
     let res;
     if (checked) {
       res = await saveQuestionWithAnswer({
@@ -388,6 +408,7 @@ const Ask = () => {
       title: formData.title.value,
       content: formData.content.value,
       tags: formData.tags.value,
+      anonymity,
     };
 
     if (isEdit) {
@@ -574,6 +595,20 @@ const Ask = () => {
                 </Form.Control.Feedback>
               </Form.Group>
             )}
+            {!isEdit && (
+              <div className="mt-3">
+                <Form.Switch
+                  checked={formData.anonymity.value}
+                  type="switch"
+                  label="匿名发布"
+                  onChange={handleAnonymityChange}
+                  id="radio-anonymity"
+                />
+                <Form.Text className="text-muted d-block mt-1">
+                  开启后将隐藏您的身份，仅显示匿名用户
+                </Form.Text>
+              </div>
+            )}
             {!checked && (
               <div className="mt-3">
                 <Button type="submit" className="me-2">
@@ -618,6 +653,17 @@ const Ask = () => {
           </Card>
         </Col>
       </Row>
+      <Modal
+        visible={showDraftModal}
+        title="提示"
+        onCancel={handleDeleteDraft}
+        onConfirm={handleRestoreDraft}
+        cancelText="删除"
+        confirmText="恢复"
+        cancelBtnVariant="link"
+        confirmBtnVariant="primary">
+        <p>您有未保存的草稿，是否恢复？</p>
+      </Modal>
     </div>
   );
 };

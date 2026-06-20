@@ -33,7 +33,7 @@ import {
   themeSettingStore,
   sideNavStore,
 } from '@/stores';
-import { logout, useQueryNotificationStatus } from '@/services';
+import { logout, useQueryNotificationStatus, useQueryUnreadMessageCount } from '@/services';
 import { Icon, MobileSideNav } from '@/components';
 
 import NavItems from './components/NavItems';
@@ -50,6 +50,7 @@ const Header: FC = () => {
   const loginSetting = loginSettingStore((state) => state.login);
   const { updateReview } = sideNavStore();
   const { data: redDot } = useQueryNotificationStatus();
+  const { data: unreadMessage } = useQueryUnreadMessageCount();
   const [showMobileSideNav, setShowMobileSideNav] = useState(false);
 
   const [showMobileSearchInput, setShowMobileSearchInput] = useState(false);
@@ -183,7 +184,12 @@ const Header: FC = () => {
               </NavLink>
             </Nav.Item>
 
-            <NavItems redDot={redDot} userInfo={user} logOut={handleLogout} />
+            <NavItems
+              redDot={redDot}
+              userInfo={user}
+              logOut={handleLogout}
+              unreadMessage={unreadMessage?.total || 0}
+            />
           </Nav>
         ) : (
           <>

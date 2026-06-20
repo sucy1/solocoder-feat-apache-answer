@@ -38,6 +38,7 @@ import (
 	"github.com/apache/answer/internal/service/config"
 	metacommon "github.com/apache/answer/internal/service/meta_common"
 	"github.com/apache/answer/internal/service/revision"
+	"github.com/apache/answer/internal/service/role"
 	"github.com/apache/answer/pkg/checker"
 	"github.com/apache/answer/pkg/htmltext"
 	"github.com/apache/answer/pkg/uid"
@@ -99,6 +100,7 @@ type QuestionCommon struct {
 	followCommon         activity_common.FollowRepo
 	tagCommon            *tagcommon.TagCommonService
 	userCommon           *usercommon.UserCommon
+	userRoleRelService   *role.UserRoleRelService
 	collectionCommon     *collectioncommon.CollectionCommon
 	AnswerCommon         *answercommon.AnswerCommon
 	metaCommonService    *metacommon.MetaCommonService
@@ -115,6 +117,7 @@ func NewQuestionCommon(questionRepo QuestionRepo,
 	followCommon activity_common.FollowRepo,
 	tagCommon *tagcommon.TagCommonService,
 	userCommon *usercommon.UserCommon,
+	userRoleRelService *role.UserRoleRelService,
 	collectionCommon *collectioncommon.CollectionCommon,
 	answerCommon *answercommon.AnswerCommon,
 	metaCommonService *metacommon.MetaCommonService,
@@ -131,6 +134,7 @@ func NewQuestionCommon(questionRepo QuestionRepo,
 		followCommon:         followCommon,
 		tagCommon:            tagCommon,
 		userCommon:           userCommon,
+		userRoleRelService:   userRoleRelService,
 		collectionCommon:     collectionCommon,
 		AnswerCommon:         answerCommon,
 		metaCommonService:    metaCommonService,
@@ -332,7 +336,29 @@ func (qs *QuestionCommon) Info(ctx context.Context, questionID string, loginUser
 	if err != nil {
 		return resp, err
 	}
-	resp.UserInfo = userInfoMap[questionInfo.UserID]
+
+	if questionInfo.Anonymity {
+		isAdmin := false
+		if len(loginUserID) > 0 {
+			roleID, err := qs.userRoleRelService.GetUserRole(ctx, loginUserID)
+			if err == nil && (roleID == role.RoleAdminID || roleID == role.RoleModeratorID) {
+				isAdmin = true
+			}
+		}
+		if loginUserID != questionInfo.UserID && !isAdmin {
+			resp.IsAnonymousUser = true
+			resp.UserInfo = &schema.UserBasicInfo{
+				Username:    "anonymous",
+				DisplayName: "匿名用户",
+				Avatar:      "",
+				ID:          "0",
+			}
+		} else {
+			resp.UserInfo = userInfoMap[questionInfo.UserID]
+		}
+	} else {
+		resp.UserInfo = userInfoMap[questionInfo.UserID]
+	}
 	resp.UpdateUserInfo = userInfoMap[questionInfo.LastEditUserID]
 	resp.LastAnsweredUserInfo = userInfoMap[resp.LastAnsweredUserID]
 	if len(loginUserID) == 0 {
@@ -367,6 +393,8 @@ func (qs *QuestionCommon) FormatQuestionsPage(
 	formattedQuestions = make([]*schema.QuestionPageResp, 0)
 	questionIDs := make([]string, 0)
 	userIDs := make([]string, 0)
+	questionAnonymityMap := make(map[string]bool)
+	questionUserIDMap := make(map[string]string)
 	for _, questionInfo := range questionList {
 		t := &schema.QuestionPageResp{
 			ID:               questionInfo.ID,
@@ -390,6 +418,8 @@ func (qs *QuestionCommon) FormatQuestionsPage(
 
 		questionIDs = append(questionIDs, questionInfo.ID)
 		userIDs = append(userIDs, questionInfo.UserID)
+		questionAnonymityMap[questionInfo.ID] = questionInfo.Anonymity
+		questionUserIDMap[questionInfo.ID] = questionInfo.UserID
 		haveEdited, haveAnswered := false, false
 		if checker.IsNotZeroString(questionInfo.LastEditUserID) {
 			haveEdited = true
@@ -443,6 +473,14 @@ func (qs *QuestionCommon) FormatQuestionsPage(
 		return formattedQuestions, err
 	}
 
+	isAdmin := false
+	if len(loginUserID) > 0 {
+		roleID, err := qs.userRoleRelService.GetUserRole(ctx, loginUserID)
+		if err == nil && (roleID == role.RoleAdminID || roleID == role.RoleModeratorID) {
+			isAdmin = true
+		}
+	}
+
 	for _, item := range formattedQuestions {
 		tags, ok := tagsMap[item.ID]
 		if ok {
@@ -450,14 +488,24 @@ func (qs *QuestionCommon) FormatQuestionsPage(
 		} else {
 			item.Tags = make([]*schema.TagResp, 0)
 		}
-		userInfo, ok := userInfoMap[item.Operator.ID]
-		if ok {
-			if userInfo != nil {
-				item.Operator.DisplayName = userInfo.DisplayName
-				item.Operator.Username = userInfo.Username
-				item.Operator.Rank = userInfo.Rank
-				item.Operator.Status = userInfo.Status
-				item.Operator.Avatar = userInfo.Avatar
+
+		anonymity := questionAnonymityMap[item.ID]
+		questionUserID := questionUserIDMap[item.ID]
+		if anonymity && loginUserID != questionUserID && !isAdmin {
+			item.Operator.DisplayName = "匿名用户"
+			item.Operator.Username = "anonymous"
+			item.Operator.Avatar = ""
+			item.Operator.ID = "0"
+		} else {
+			userInfo, ok := userInfoMap[item.Operator.ID]
+			if ok {
+				if userInfo != nil {
+					item.Operator.DisplayName = userInfo.DisplayName
+					item.Operator.Username = userInfo.Username
+					item.Operator.Rank = userInfo.Rank
+					item.Operator.Status = userInfo.Status
+					item.Operator.Avatar = userInfo.Avatar
+				}
 			}
 		}
 	}
@@ -468,12 +516,16 @@ func (qs *QuestionCommon) FormatQuestions(ctx context.Context, questionList []*e
 	list := make([]*schema.QuestionInfoResp, 0)
 	objectIds := make([]string, 0)
 	userIds := make([]string, 0)
+	questionAnonymityMap := make(map[string]bool)
+	questionUserIDMap := make(map[string]string)
 
 	for _, questionInfo := range questionList {
 		item := qs.ShowFormat(ctx, questionInfo)
 		list = append(list, item)
 		objectIds = append(objectIds, item.ID)
 		userIds = append(userIds, item.UserID, item.LastEditUserID, item.LastAnsweredUserID)
+		questionAnonymityMap[item.ID] = questionInfo.Anonymity
+		questionUserIDMap[item.ID] = questionInfo.UserID
 	}
 	tagsMap, err := qs.tagCommon.BatchGetObjectTag(ctx, objectIds)
 	if err != nil {
@@ -485,9 +537,29 @@ func (qs *QuestionCommon) FormatQuestions(ctx context.Context, questionList []*e
 		return list, err
 	}
 
+	isAdmin := false
+	if len(loginUserID) > 0 {
+		roleID, err := qs.userRoleRelService.GetUserRole(ctx, loginUserID)
+		if err == nil && (roleID == role.RoleAdminID || roleID == role.RoleModeratorID) {
+			isAdmin = true
+		}
+	}
+
 	for _, item := range list {
 		item.Tags = tagsMap[item.ID]
-		item.UserInfo = userInfoMap[item.UserID]
+		anonymity := questionAnonymityMap[item.ID]
+		questionUserID := questionUserIDMap[item.ID]
+		if anonymity && loginUserID != questionUserID && !isAdmin {
+			item.IsAnonymousUser = true
+			item.UserInfo = &schema.UserBasicInfo{
+				Username:    "anonymous",
+				DisplayName: "匿名用户",
+				Avatar:      "",
+				ID:          "0",
+			}
+		} else {
+			item.UserInfo = userInfoMap[item.UserID]
+		}
 		item.UpdateUserInfo = userInfoMap[item.LastEditUserID]
 		item.LastAnsweredUserInfo = userInfoMap[item.LastAnsweredUserID]
 	}
@@ -672,6 +744,7 @@ func (qs *QuestionCommon) ShowFormat(ctx context.Context, data *entity.Question)
 	info.Show = data.Show
 	info.UserID = data.UserID
 	info.LastEditUserID = data.LastEditUserID
+	info.Anonymity = data.Anonymity
 	if data.LastAnswerID != "0" {
 		answerInfo, exist, err := qs.answerRepo.GetAnswer(ctx, data.LastAnswerID)
 		if err == nil && exist {

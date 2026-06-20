@@ -19,11 +19,14 @@
 
 import { FC, memo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Row, Col } from 'react-bootstrap';
+import { Row, Col, Card } from 'react-bootstrap';
 
 // import * as Type from '@/common/interface';
-import { CardBadge } from '@/components';
-import { useGetRecentAwardBadges } from '@/services';
+import { CardBadge, AchievementBadge, Icon } from '@/components';
+import {
+  useGetRecentAwardBadges,
+  useGetUserAchievementSummary,
+} from '@/services';
 import TopList from '../TopList';
 
 interface Props {
@@ -31,11 +34,15 @@ interface Props {
   visible: boolean;
   introduction: string;
   data;
+  userId?: string;
 }
-const Index: FC<Props> = ({ visible, introduction, data, username }) => {
+const Index: FC<Props> = ({ visible, introduction, data, username, userId }) => {
   const { t } = useTranslation('translation', { keyPrefix: 'personal' });
   const { data: recentBadges } = useGetRecentAwardBadges(
     visible ? username : null,
+  );
+  const { data: achievementSummary } = useGetUserAchievementSummary(
+    visible ? userId : null,
   );
   if (!visible) {
     return null;
@@ -91,6 +98,83 @@ const Index: FC<Props> = ({ visible, introduction, data, username }) => {
           <div className="mb-5">{t('content_empty')}</div>
         )}
       </div>
+
+      {achievementSummary && (
+        <>
+          <h5 className="mb-3">{t('achievement.overview')}</h5>
+          <Row className="mb-4">
+            <Col sm={4} className="mb-3">
+              <Card className="text-center h-100">
+                <Card.Body>
+                  <Icon
+                    name="trophy-fill"
+                    size="32px"
+                    className="text-warning mb-2"
+                  />
+                  <div className="h3 mb-1">
+                    {achievementSummary.total_reputation}
+                  </div>
+                  <div className="small text-secondary">
+                    {t('achievement.total_reputation')}
+                  </div>
+                </Card.Body>
+              </Card>
+            </Col>
+            <Col sm={4} className="mb-3">
+              <Card className="text-center h-100">
+                <Card.Body>
+                  <Icon
+                    name="medal-fill"
+                    size="32px"
+                    className="text-success mb-2"
+                  />
+                  <div className="h3 mb-1">
+                    {achievementSummary.badges_count}/50
+                  </div>
+                  <div className="small text-secondary">
+                    {t('achievement.badges_earned')}
+                  </div>
+                </Card.Body>
+              </Card>
+            </Col>
+            <Col sm={4} className="mb-3">
+              <Card className="text-center h-100">
+                <Card.Body>
+                  <Icon
+                    name="calendar-check-fill"
+                    size="32px"
+                    className="text-primary mb-2"
+                  />
+                  <div className="h3 mb-1">
+                    {achievementSummary.consecutive_login_days}
+                  </div>
+                  <div className="small text-secondary">
+                    {t('achievement.consecutive_login_days')}
+                  </div>
+                </Card.Body>
+              </Card>
+            </Col>
+          </Row>
+
+          {achievementSummary.badges?.length > 0 && (
+            <div className="mb-4">
+              <h5 className="mb-3">{t('achievement.badges')}</h5>
+              <Row>
+                {achievementSummary.badges.map((badge) => (
+                  <Col
+                    sm={4}
+                    md={3}
+                    lg={2}
+                    key={badge.badge_id}
+                    className="mb-3">
+                    <AchievementBadge data={badge} showEarnedTime />
+                  </Col>
+                ))}
+              </Row>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 };

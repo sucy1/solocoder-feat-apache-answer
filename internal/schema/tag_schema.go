@@ -88,6 +88,8 @@ type GetTagResp struct {
 	MainTagSlugName string `json:"main_tag_slug_name"`
 	Recommend       bool   `json:"recommend"`
 	Reserved        bool   `json:"reserved"`
+	GroupID         int64  `json:"group_id"`
+	GroupName       string `json:"group_name"`
 }
 
 func (tr *GetTagResp) GetExcerpt() {
@@ -127,6 +129,8 @@ type GetTagPageResp struct {
 	UpdatedAt int64 `json:"updated_at"`
 	Recommend bool  `json:"recommend"`
 	Reserved  bool  `json:"reserved"`
+	GroupID   int64 `json:"group_id"`
+	GroupName string `json:"group_name"`
 }
 
 func (tr *GetTagPageResp) GetExcerpt() {

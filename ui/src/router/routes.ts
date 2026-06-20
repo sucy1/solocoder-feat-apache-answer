@@ -213,6 +213,20 @@ const routes: RouteNode[] = [
             page: 'pages/Users/Notifications',
           },
           {
+            path: 'messages',
+            page: 'pages/Messages',
+            guard: () => {
+              return guard.logged();
+            },
+          },
+          {
+            path: 'messages/:conversationId',
+            page: 'pages/Messages',
+            guard: () => {
+              return guard.logged();
+            },
+          },
+          {
             path: '/posts/:qid/timeline',
             page: 'pages/Timeline',
             guard: () => {

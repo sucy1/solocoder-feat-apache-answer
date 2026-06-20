@@ -269,6 +269,7 @@ const Index = () => {
                   canAccept={isAuthor || isAdmin || isModerator}
                   callback={initPage}
                   isLogged={isLogged}
+                  currentUser={userInfo}
                 />
               );
             })}

@@ -30,6 +30,7 @@ interface IProps {
   href?: string;
   className?: string;
   textClassName?: string;
+  showGroup?: boolean;
 }
 
 const Index: FC<IProps> = ({
@@ -37,6 +38,7 @@ const Index: FC<IProps> = ({
   href,
   className = '',
   textClassName = '',
+  showGroup = false,
 }) => {
   href ||= pathFactory.tagLanding(data.slug_name);
 
@@ -55,6 +57,9 @@ const Index: FC<IProps> = ({
       <span className={textClassName}>
         {data.display_name || data.slug_name}
       </span>
+      {showGroup && data.group_name && (
+        <span className="ms-1 text-muted small">({data.group_name})</span>
+      )}
     </Link>
   );
 };

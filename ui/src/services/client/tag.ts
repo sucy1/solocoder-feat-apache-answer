@@ -107,3 +107,16 @@ export const unDeleteTag = (id) => {
     tag_id: id,
   });
 };
+
+export const useQueryTagGroups = () => {
+  const apiUrl = '/answer/api/v1/tag/group/with_tags';
+  const { data, error, mutate } = useSWR<Type.TagGroup[]>(apiUrl, (url) =>
+    request.get(url, { allow404: true }),
+  );
+  return {
+    data,
+    isLoading: !data && !error,
+    error,
+    mutate,
+  };
+};

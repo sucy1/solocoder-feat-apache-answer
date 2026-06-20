@@ -22,8 +22,10 @@ import debounce from 'lodash/debounce';
 import {
   DRAFT_QUESTION_STORAGE_KEY,
   DRAFT_ANSWER_STORAGE_KEY,
+  LOGGED_TOKEN_STORAGE_KEY,
 } from '@/common/constants';
 import { storageExpires as storage } from '@/utils';
+import Storage from '@/utils/storage';
 
 export type QuestionDraft = {
   params: {
@@ -57,9 +59,15 @@ class SaveDraft {
     this.status = 'save';
   }
 
+  private isLogged(): boolean {
+    return !!Storage.get(LOGGED_TOKEN_STORAGE_KEY);
+  }
+
   save = debounce((data: DraftParams) => {
-    // TODO
     if (this.status === 'remove') {
+      return;
+    }
+    if (!this.isLogged()) {
       return;
     }
     if (this.type === 'question') {
@@ -76,7 +84,7 @@ class SaveDraft {
 
       this.storeDraft({ content, questionId }, callback);
     }
-  }, 3000);
+  }, 30000);
 
   remove() {
     this.status = 'remove';
@@ -98,7 +106,7 @@ class SaveDraft {
       this.type === 'question'
         ? DRAFT_QUESTION_STORAGE_KEY
         : DRAFT_ANSWER_STORAGE_KEY;
-    storage.set(key, params);
+    storage.set(key, params, Date.now() + 1000 * 60 * 60 * 24 * 7);
     callback?.();
   };
 }

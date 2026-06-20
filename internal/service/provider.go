@@ -28,6 +28,7 @@ import (
 	answercommon "github.com/apache/answer/internal/service/answer_common"
 	"github.com/apache/answer/internal/service/apikey"
 	"github.com/apache/answer/internal/service/auth"
+	"github.com/apache/answer/internal/service/achievement"
 	"github.com/apache/answer/internal/service/badge"
 	"github.com/apache/answer/internal/service/collection"
 	collectioncommon "github.com/apache/answer/internal/service/collection_common"
@@ -43,6 +44,7 @@ import (
 	"github.com/apache/answer/internal/service/file_record"
 	"github.com/apache/answer/internal/service/follow"
 	"github.com/apache/answer/internal/service/importer"
+	"github.com/apache/answer/internal/service/message_common"
 	"github.com/apache/answer/internal/service/meta"
 	metacommon "github.com/apache/answer/internal/service/meta_common"
 	"github.com/apache/answer/internal/service/noticequeue"
@@ -127,6 +129,7 @@ var ProviderSetService = wire.NewSet(
 	review.NewReviewService,
 	meta.NewMetaService,
 	eventqueue.NewService,
+	achievement.NewAchievementService,
 	badge.NewBadgeService,
 	badge.NewBadgeEventService,
 	badge.NewBadgeAwardService,
@@ -138,4 +141,6 @@ var ProviderSetService = wire.NewSet(
 	feature_toggle.NewFeatureToggleService,
 	embedding.NewEmbeddingService,
 	vector_sync.NewService,
+	tagcommon.NewTagGroupService,
+	messagecommon.NewMessageCommon,
 )

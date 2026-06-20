@@ -57,4 +57,7 @@ var ProviderSetController = wire.NewSet(
 	NewMCPController,
 	NewAIController,
 	NewAIConversationController,
+	NewTagGroupController,
+	NewMessageController,
+	NewAchievementController,
 )

@@ -18,16 +18,17 @@
  */
 
 import { useState } from 'react';
-import { Row, Col, Card, Button, Form, Stack } from 'react-bootstrap';
+import { Row, Col, Card, Button, Form, Stack, Accordion } from 'react-bootstrap';
 import { useSearchParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
 import { usePageTags, useSkeletonControl } from '@/hooks';
-import { Tag, Pagination, QueryGroup, TagsLoader } from '@/components';
+import { Tag, Pagination, QueryGroup, TagsLoader, Icon } from '@/components';
 import { formatCount, escapeRemove } from '@/utils';
 import { tryNormalLogged } from '@/utils/guard';
-import { useQueryTags, following } from '@/services';
+import { useQueryTags, following, useQueryTagGroups } from '@/services';
 import { loggedUserInfoStore } from '@/stores';
+import type * as Type from '@/common/interface';
 
 const sortBtns = ['popular', 'name', 'newest'];
 
@@ -35,6 +36,7 @@ const Tags = () => {
   const [urlSearch, setUrlSearch] = useSearchParams();
   const { t } = useTranslation('translation', { keyPrefix: 'tags' });
   const [searchTag, setSearchTag] = useState('');
+  const [viewMode, setViewMode] = useState<'list' | 'group'>('list');
   const { role_id } = loggedUserInfoStore((_) => _.user);
 
   const page = Number(urlSearch.get('page')) || 1;
@@ -52,7 +54,40 @@ const Tags = () => {
     ...(sort ? { query_cond: sort } : {}),
   });
 
-  const { isSkeletonShow } = useSkeletonControl(isLoading);
+  const {
+    data: tagGroups,
+    mutate: mutateGroups,
+    isLoading: groupsLoading,
+  } = useQueryTagGroups();
+
+  const { isSkeletonShow } = useSkeletonControl(isLoading || groupsLoading);
+
+  const processTagGroups = (groups: Type.TagGroup[] | undefined) => {
+    if (!groups) return [];
+    return groups.map((group) => {
+      if (!group.group_id || group.group_id === '') {
+        return {
+          ...group,
+          group_name: t('other_group'),
+        };
+      }
+      return group;
+    });
+  };
+
+  const processedGroups = processTagGroups(tagGroups);
+
+  const handleFollowGroup = (tag: Type.TagInfo) => {
+    if (!tryNormalLogged(true)) {
+      return;
+    }
+    following({
+      object_id: tag.tag_id,
+      is_cancel: tag.is_follower,
+    }).then(() => {
+      mutateGroups();
+    });
+  };
 
   const handleChange = (e) => {
     setSearchTag(e.target.value);
@@ -102,64 +137,142 @@ const Tags = () => {
                 {t('title', { keyPrefix: 'tag_modal' })}
               </Link>
             ) : null}
+            <Button
+              variant="outline-secondary"
+              size="sm"
+              onClick={() => setViewMode(viewMode === 'list' ? 'group' : 'list')}>
+              <Icon
+                name={viewMode === 'list' ? 'grid-3x3' : 'list'}
+                className="me-1"
+              />
+              {viewMode === 'list' ? t('view_by_group') : t('view_by_list')}
+            </Button>
           </Stack>
-          <QueryGroup
-            data={sortBtns}
-            currentSort={sort || 'popular'}
-            sortKey="sort"
-            i18nKeyPrefix="tags.sort_buttons"
-          />
+          {viewMode === 'list' && (
+            <QueryGroup
+              data={sortBtns}
+              currentSort={sort || 'popular'}
+              sortKey="sort"
+              i18nKeyPrefix="tags.sort_buttons"
+            />
+          )}
         </div>
       </Col>
 
       <Col className="mt-4" xxl={12}>
-        <Row>
-          {isSkeletonShow ? (
-            <TagsLoader />
-          ) : (
-            tags?.list?.map((tag) => (
-              <Col
-                key={tag.slug_name}
-                xl={3}
-                lg={4}
-                md={4}
-                sm={6}
-                xs={12}
-                className="mb-4">
-                <Card className="h-100">
-                  <Card.Body className="d-flex flex-column align-items-start">
-                    <Tag className="mb-3" data={tag} />
+        {viewMode === 'list' ? (
+          <>
+            <Row>
+              {isSkeletonShow ? (
+                <TagsLoader />
+              ) : (
+                tags?.list?.map((tag) => (
+                  <Col
+                    key={tag.slug_name}
+                    xl={3}
+                    lg={4}
+                    md={4}
+                    sm={6}
+                    xs={12}
+                    className="mb-4">
+                    <Card className="h-100">
+                      <Card.Body className="d-flex flex-column align-items-start">
+                        <Tag className="mb-3" data={tag} showGroup />
 
-                    <div className="small flex-fill text-break text-wrap text-truncate-3 reset-p mb-3">
-                      {escapeRemove(tag.excerpt)}
-                    </div>
-                    <div className="d-flex align-items-center">
-                      <Button
-                        className={`me-2 ${tag.is_follower ? 'active' : ''}`}
-                        variant="outline-primary"
-                        size="sm"
-                        onClick={() => handleFollow(tag)}>
-                        {tag.is_follower
-                          ? t('button_following')
-                          : t('button_follow')}
-                      </Button>
-                      <span className="text-secondary small text-nowrap">
-                        {formatCount(tag.question_count)} {t('tag_label')}
+                        <div className="small flex-fill text-break text-wrap text-truncate-3 reset-p mb-3">
+                          {escapeRemove(tag.excerpt)}
+                        </div>
+                        <div className="d-flex align-items-center">
+                          <Button
+                            className={`me-2 ${tag.is_follower ? 'active' : ''}`}
+                            variant="outline-primary"
+                            size="sm"
+                            onClick={() => handleFollow(tag)}>
+                            {tag.is_follower
+                              ? t('button_following')
+                              : t('button_follow')}
+                          </Button>
+                          <span className="text-secondary small text-nowrap">
+                            {formatCount(tag.question_count)} {t('tag_label')}
+                          </span>
+                        </div>
+                      </Card.Body>
+                    </Card>
+                  </Col>
+                ))
+              )}
+            </Row>
+            <div className="d-flex justify-content-center">
+              <Pagination
+                currentPage={page}
+                totalSize={tags?.count || 0}
+                pageSize={pageSize}
+              />
+            </div>
+          </>
+        ) : (
+          <Accordion defaultActiveKey="0" flush>
+            {isSkeletonShow ? (
+              <TagsLoader />
+            ) : (
+              processedGroups.map((group, groupIndex) => (
+                <Accordion.Item
+                  eventKey={String(groupIndex)}
+                  key={group.group_id || `group-${groupIndex}`}>
+                  <Accordion.Header>
+                    <div className="d-flex align-items-center w-100 justify-content-between pe-3">
+                      <span>
+                        {group.group_name}
+                        <span className="ms-2 text-muted small">
+                          ({group.tags?.length || 0})
+                        </span>
                       </span>
                     </div>
-                  </Card.Body>
-                </Card>
-              </Col>
-            ))
-          )}
-        </Row>
-        <div className="d-flex justify-content-center">
-          <Pagination
-            currentPage={page}
-            totalSize={tags?.count || 0}
-            pageSize={pageSize}
-          />
-        </div>
+                  </Accordion.Header>
+                  <Accordion.Body>
+                    <Row>
+                      {group.tags?.map((tag) => (
+                        <Col
+                          key={tag.slug_name}
+                          xl={3}
+                          lg={4}
+                          md={4}
+                          sm={6}
+                          xs={12}
+                          className="mb-4">
+                          <Card className="h-100">
+                            <Card.Body className="d-flex flex-column align-items-start">
+                              <Tag className="mb-3" data={tag} />
+
+                              <div className="small flex-fill text-break text-wrap text-truncate-3 reset-p mb-3">
+                                {escapeRemove(tag.excerpt)}
+                              </div>
+                              <div className="d-flex align-items-center">
+                                <Button
+                                  className={`me-2 ${tag.is_follower ? 'active' : ''}`}
+                                  variant="outline-primary"
+                                  size="sm"
+                                  onClick={() => handleFollowGroup(tag)}>
+                                  {tag.is_follower
+                                    ? t('button_following')
+                                    : t('button_follow')}
+                                </Button>
+                                <span className="text-secondary small text-nowrap">
+                                  {formatCount(tag.question_count)}{' '}
+                                  {t('tag_label')}
+                                </span>
+                              </div>
+                            </Card.Body>
+                          </Card>
+                        </Col>
+                      ))}
+                    </Row>
+                  </Accordion.Body>
+                </Accordion.Item>
+              ))
+            )}
+          </Accordion>
+        )}
       </Col>
     </Row>
   );

@@ -17,18 +17,20 @@
  * under the License.
  */
 
-import { FC } from 'react';
-import { Row, Col } from 'react-bootstrap';
+import { FC, useState } from 'react';
+import { Row, Col, Button, Form, Modal } from 'react-bootstrap';
 import { useTranslation } from 'react-i18next';
 import { useParams, useSearchParams, Link } from 'react-router-dom';
 
 import { usePageTags } from '@/hooks';
-import { Pagination, FormatTime, Empty } from '@/components';
-import { loggedUserInfoStore } from '@/stores';
+import { Pagination, FormatTime, Empty, Modal as ConfirmModal } from '@/components';
+import { loggedUserInfoStore, toastStore } from '@/stores';
 import {
   usePersonalInfoByName,
   usePersonalTop,
   usePersonalListByTabName,
+  sendMessage,
+  useQueryBlockedUserList,
 } from '@/services';
 import type { UserInfoRes } from '@/common/interface';
 
@@ -44,6 +46,7 @@ import {
   Answers,
   Votes,
   Badges,
+  Achievements,
 } from './components';
 
 const Personal: FC = () => {
@@ -54,9 +57,14 @@ const Personal: FC = () => {
   const { t } = useTranslation('translation', { keyPrefix: 'personal' });
   const sessionUser = loggedUserInfoStore((state) => state.user);
   const isSelf = sessionUser?.username === username;
+  const [showMessageModal, setShowMessageModal] = useState(false);
+  const [messageTitle, setMessageTitle] = useState('');
+  const [messageContent, setMessageContent] = useState('');
+  const [sendingMessage, setSendingMessage] = useState(false);
 
   const { data: userInfo } = usePersonalInfoByName(username);
   const { data: topData } = usePersonalTop(username, tabName);
+  const { data: blockedUsers } = useQueryBlockedUserList();
 
   const { data: listData, isLoading = true } = usePersonalListByTabName(
     {
@@ -68,6 +76,33 @@ const Personal: FC = () => {
     tabName,
   );
   const { count = 0, list = [] } = listData?.[tabName] || {};
+
+  const isBlocked = userInfo?.id
+    ? blockedUsers?.some((b) => b.blocked_user_id === userInfo.id) || false
+    : false;
+
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    if (!userInfo?.id || !messageContent.trim()) {
+      return;
+    }
+
+    setSendingMessage(true);
+    try {
+      await sendMessage(userInfo.id, messageTitle, messageContent);
+      toastStore.getState().show({
+        msg: t('message_sent'),
+        variant: 'success',
+      });
+      setShowMessageModal(false);
+      setMessageTitle('');
+      setMessageContent('');
+    } catch (error) {
+      console.error('Failed to send message:', error);
+    } finally {
+      setSendingMessage(false);
+    }
+  };
 
   let pageTitle = '';
   if (userInfo?.username) {
@@ -86,15 +121,22 @@ const Personal: FC = () => {
           )}
           <div className="d-md-flex d-block flex-wrap justify-content-between">
             <UserInfo data={userInfo as UserInfoRes} />
-            {isSelf && (
-              <div className="mb-3">
+            <div className="mb-3 d-flex gap-2">
+              {isSelf && (
                 <Link
                   className="btn btn-outline-secondary"
                   to="/users/settings/profile">
                   {t('edit_profile')}
                 </Link>
-              </div>
-            )}
+              )}
+              {!isSelf && sessionUser?.username && !isBlocked && (
+                <Button
+                  variant="primary"
+                  onClick={() => setShowMessageModal(true)}>
+                  {t('send_message')}
+                </Button>
+              )}
+            </div>
           </div>
           <NavBar tabName={tabName} slug={username} isSelf={isSelf} />
 
@@ -103,12 +145,13 @@ const Personal: FC = () => {
             introduction={userInfo?.bio_html || ''}
             data={topData}
             username={username}
+            userId={userInfo?.id}
           />
 
           <ListHead
             count={tabName === 'reputation' ? Number(userInfo?.rank) : count}
             sort={order}
-            visible={tabName !== 'overview'}
+            visible={tabName !== 'overview' && tabName !== 'achievements'}
             tabName={tabName}
           />
           <Answers data={list} visible={tabName === 'answers'} />
@@ -118,6 +161,10 @@ const Personal: FC = () => {
             visible={tabName === 'questions' || tabName === 'bookmarks'}
           />
           <Reputation data={list} visible={tabName === 'reputation'} />
+          <Achievements
+            visible={tabName === 'achievements'}
+            userId={userInfo?.id}
+          />
           <Comments data={list} visible={tabName === 'comments'} />
           <Votes data={list} visible={tabName === 'votes'} />
           <Badges
@@ -154,6 +201,53 @@ const Personal: FC = () => {
           )}
         </Col>
       </Row>
+
+      <Modal
+        show={showMessageModal}
+        onHide={() => setShowMessageModal(false)}
+        centered>
+        <Modal.Header closeButton>
+          <Modal.Title>
+            {t('send_message_to', { username: userInfo?.display_name })}
+          </Modal.Title>
+        </Modal.Header>
+        <Form onSubmit={handleSendMessage}>
+          <Modal.Body>
+            <Form.Group className="mb-3">
+              <Form.Label>{t('message_title')}</Form.Label>
+              <Form.Control
+                type="text"
+                placeholder={t('message_title_placeholder')}
+                value={messageTitle}
+                onChange={(e) => setMessageTitle(e.target.value)}
+              />
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>{t('message_content')}</Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={5}
+                placeholder={t('message_content_placeholder')}
+                value={messageContent}
+                onChange={(e) => setMessageContent(e.target.value)}
+              />
+            </Form.Group>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button
+              variant="secondary"
+              onClick={() => setShowMessageModal(false)}>
+              {t('cancel')}
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              disabled={!messageContent.trim() || sendingMessage}>
+              {sendingMessage ? t('sending') : t('send')}
+            </Button>
+          </Modal.Footer>
+        </Form>
+      </Modal>
     </div>
   );
 };

@@ -84,6 +84,8 @@ type QuestionAdd struct {
 	HTML string `json:"-"`
 	// tags
 	Tags []*TagItem `validate:"dive" json:"tags"`
+	// anonymity
+	Anonymity bool `json:"anonymity"`
 	// user id
 	UserID string `json:"-"`
 	QuestionPermission
@@ -190,6 +192,8 @@ type QuestionUpdate struct {
 	Tags []*TagItem `validate:"dive" json:"tags"`
 	// edit summary
 	EditSummary string `validate:"omitempty" json:"edit_summary"`
+	// anonymity
+	Anonymity bool `json:"anonymity"`
 	// user id
 	UserID       string `json:"-"`
 	NoNeedReview bool   `json:"-"`
@@ -264,6 +268,8 @@ type QuestionInfoResp struct {
 	Collected            bool           `json:"collected"`
 	VoteStatus           string         `json:"vote_status"`
 	IsFollowed           bool           `json:"is_followed"`
+	Anonymity            bool           `json:"anonymity"`
+	IsAnonymousUser      bool           `json:"is_anonymous_user"`
 
 	// MemberActions
 	MemberActions  []*PermissionMemberAction `json:"member_actions"`

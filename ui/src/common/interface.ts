@@ -57,6 +57,8 @@ export interface Tag extends TagBase {
   main_tag_slug_name?: string;
   parsed_text?: string;
   tag_id?: string;
+  group_id?: string;
+  group_name?: string;
 }
 
 export interface SynonymsTag extends Tag {
@@ -77,6 +79,14 @@ export interface TagInfo extends TagBase {
   main_tag_slug_name?: string;
   excerpt?;
   status: string;
+  group_id?: string;
+  group_name?: string;
+}
+
+export interface TagGroup {
+  group_id: string;
+  group_name: string;
+  tags: TagInfo[];
 }
 export interface QuestionParams extends ImgCodeReq {
   title: string;
@@ -278,6 +288,7 @@ export interface PostAnswerReq extends ImgCodeReq {
   content: string;
   html?: string;
   question_id: string;
+  anonymity?: boolean;
 }
 
 export interface PageUser {
@@ -890,4 +901,30 @@ export interface AdminTagsSetting {
   recommend_tags: Tag[];
   required_tag: boolean;
   reserved_tags: Tag[];
+}
+
+export interface Achievement {
+  id: string;
+  achievement_type: string;
+  achievement_id: string;
+  source: string;
+  reputation: number;
+  description: string;
+  created_at: number;
+}
+
+export interface AchievementBadge {
+  badge_id: string;
+  badge_name: string;
+  badge_description: string;
+  icon: string;
+  earned: boolean;
+  earned_at?: number;
+}
+
+export interface UserAchievementSummary {
+  total_reputation: number;
+  badges_count: number;
+  consecutive_login_days: number;
+  badges: AchievementBadge[];
 }

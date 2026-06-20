@@ -32,9 +32,10 @@ interface Props {
   redDot: Type.NotificationStatus | undefined;
   userInfo: Type.UserInfoRes;
   logOut: (e) => void;
+  unreadMessage: number;
 }
 
-const Index: FC<Props> = ({ redDot, userInfo, logOut }) => {
+const Index: FC<Props> = ({ redDot, userInfo, logOut, unreadMessage }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -57,6 +58,20 @@ const Index: FC<Props> = ({ redDot, userInfo, logOut }) => {
           className="icon-link nav-link d-flex align-items-center justify-content-center p-0 me-2 position-relative">
           <Icon name="bell-fill" className="fs-4" />
           {(redDot?.inbox || 0) > 0 && (
+            <div className="unread-dot bg-danger">
+              <span className="visually-hidden">
+                {t('new_alerts', { keyPrefix: 'notifications' })}
+              </span>
+            </div>
+          )}
+        </NavLink>
+
+        <NavLink
+          to="/messages"
+          title={t('messages', { keyPrefix: 'header.nav' })}
+          className="icon-link nav-link d-flex align-items-center justify-content-center p-0 me-2 position-relative">
+          <Icon name="chat-dots-fill" className="fs-4" />
+          {unreadMessage > 0 && (
             <div className="unread-dot bg-danger">
               <span className="visually-hidden">
                 {t('new_alerts', { keyPrefix: 'notifications' })}

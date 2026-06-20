@@ -93,10 +93,13 @@ export const usePersonalListByTabName = (params: ListReq, tabName: string) => {
     delete params.order;
     apiUrl = '/answer/api/v1/badge/user/awards';
   }
+  if (tabName === 'achievements') {
+    apiUrl = null;
+  }
 
   const queryParams = qs.stringify(params, { skipNulls: true });
   const { data, error, mutate } = useSWR<ListRes, Error>(
-    tabName !== 'overview' ? `${apiUrl}?${queryParams}` : null,
+    tabName !== 'overview' && apiUrl ? `${apiUrl}?${queryParams}` : null,
     request.instance.get,
   );
 

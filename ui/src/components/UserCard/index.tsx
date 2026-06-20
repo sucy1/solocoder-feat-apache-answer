@@ -34,6 +34,7 @@ interface Props {
   className?: string;
   updateTime?: number;
   updateTimePrefix?: string;
+  currentUser?: any;
 }
 
 const Index: FC<Props> = ({
@@ -45,17 +46,25 @@ const Index: FC<Props> = ({
   className = '',
   updateTime = 0,
   updateTimePrefix = '',
+  currentUser,
 }) => {
+  const isAnonymous = data?.is_anonymous_user;
+  const isCurrentUser = currentUser?.username === data?.username;
+  const isAdmin = currentUser?.role_id === 2;
+  const canSeeRealName = isLogged && (isCurrentUser || isAdmin);
+  const displayName = isAnonymous && !canSeeRealName ? '匿名用户' : data?.display_name;
+  const showUserLink = data?.status !== 'deleted' && !isAnonymous;
+
   return (
     <div className={classnames('d-flex', className)}>
-      {data?.status !== 'deleted' ? (
+      {showUserLink ? (
         <Link to={`/users/${data?.username}`}>
           <Avatar
             avatar={data?.avatar}
             size="40px"
             className="me-2 d-none d-md-block"
             searchStr="s=96"
-            alt={data?.display_name}
+            alt={displayName}
           />
 
           <Avatar
@@ -63,43 +72,53 @@ const Index: FC<Props> = ({
             size="24px"
             className="me-2 d-block d-md-none"
             searchStr="s=48"
-            alt={data?.display_name}
+            alt={displayName}
           />
         </Link>
       ) : (
         <>
           <Avatar
-            avatar={data?.avatar}
+            avatar={isAnonymous ? '' : data?.avatar}
             size="40px"
             className="me-2 d-none d-md-block"
             searchStr="s=96"
-            alt={data?.display_name}
+            alt={displayName}
           />
 
           <Avatar
-            avatar={data?.avatar}
+            avatar={isAnonymous ? '' : data?.avatar}
             size="24px"
             className="me-2 d-block d-md-none"
             searchStr="s=48"
-            alt={data?.display_name}
+            alt={displayName}
           />
         </>
       )}
       <div className="small text-secondary d-flex flex-column">
         <div className="me-1 me-md-0 d-flex align-items-center">
-          {data?.status !== 'deleted' ? (
+          {showUserLink ? (
             <Link
               to={`/users/${data?.username}`}
               className="me-1 text-break name-ellipsis"
               style={{ maxWidth: '100px' }}>
-              {data?.display_name}
+              {displayName}
+              {isAnonymous && canSeeRealName && (
+                <span className="text-muted ms-1">(匿名)</span>
+              )}
             </Link>
           ) : (
-            <span className="me-1 text-break">{data?.display_name}</span>
+            <span className="me-1 text-break">
+              {displayName}
+              {isAnonymous && canSeeRealName && (
+                <span className="text-muted ms-1">(匿名)</span>
+              )}
+            </span>
           )}
-          <span className="fw-bold" title="Reputation">
-            {formatCount(data?.rank)}
-          </span>
+          {!isAnonymous && (
+            <span className="fw-bold" title="Reputation">
+              {formatCount(data?.rank)}
+            </span>
+          )}
         </div>
         {time &&
           (isLogged ? (

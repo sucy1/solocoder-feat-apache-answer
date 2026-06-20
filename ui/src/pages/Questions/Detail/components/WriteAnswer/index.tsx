@@ -162,6 +162,7 @@ const Index: FC<Props> = ({ visible = false, data, callback }) => {
       question_id: data?.qid,
       content: formData.content.value,
       html: marked.parse(formData.content.value),
+      anonymity,
     };
     const imgCode = aCaptcha?.getCaptcha();
     if (imgCode?.verify) {
@@ -322,6 +323,21 @@ const Index: FC<Props> = ({ visible = false, data, callback }) => {
             {formData.content.errorMsg}
           </Form.Control.Feedback>
         </Form.Group>
+      )}
+
+      {showEditor && (
+        <div className="mb-3">
+          <Form.Switch
+            checked={anonymity}
+            type="switch"
+            label="匿名发布"
+            onChange={(e) => setAnonymity(e.target.checked)}
+            id="radio-anonymity"
+          />
+          <Form.Text className="text-muted d-block mt-1">
+            开启后将隐藏您的身份，仅显示匿名用户
+          </Form.Text>
+        </div>
       )}
 
       {data.answered && !showEditor ? (

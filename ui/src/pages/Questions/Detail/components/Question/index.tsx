@@ -103,7 +103,7 @@ const Index: FC<Props> = ({ data, initPage, hasAnswer, isLogged }) => {
       </h1>
 
       <div className="d-flex flex-wrap align-items-center small mb-4 text-secondary border-bottom pb-3">
-        <BaseUserCard data={data.user_info} className="me-3" />
+        <BaseUserCard data={data.user_info} className="me-3" isLogged={isLogged} />
 
         {isLogged ? (
           <>
