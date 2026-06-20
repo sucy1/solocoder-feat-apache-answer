@@ -895,6 +895,7 @@ export interface AdminQuestionSetting {
   min_tags: number;
   min_content: number;
   restrict_answer: boolean;
+  anonymity_enable: boolean;
 }
 
 export interface AdminTagsSetting {
@@ -925,6 +926,7 @@ export interface AchievementBadge {
 export interface UserAchievementSummary {
   total_reputation: number;
   badges_count: number;
+  max_badges: number;
   consecutive_login_days: number;
   badges: AchievementBadge[];
 }

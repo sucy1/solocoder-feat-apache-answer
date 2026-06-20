@@ -339,6 +339,7 @@ const Messages: FC = () => {
                         className={classNames('message-item', {
                           own: isOwn,
                           other: !isOwn,
+                          unread: !isOwn && !msg.is_read,
                         })}>
                         <div className="message-avatar">
                           <Avatar
@@ -367,6 +368,19 @@ const Messages: FC = () => {
                             className={classNames('message-time', {
                               'text-end': isOwn,
                             })}>
+                            {!isOwn && (
+                              <span
+                                className={classNames('me-2', {
+                                  'text-primary': msg.is_read,
+                                  'text-secondary': !msg.is_read,
+                                })}>
+                                {msg.is_read ? (
+                                  <Icon name="check2-all" size="14px" />
+                                ) : (
+                                  <Icon name="check2" size="14px" />
+                                )}
+                              </span>
+                            )}
                             <FormatTime time={msg.created_at} autoUpdate />
                           </div>
                         </div>

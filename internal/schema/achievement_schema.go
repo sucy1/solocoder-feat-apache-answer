@@ -39,6 +39,7 @@ type GetUserAchievementResp struct {
 type GetUserAchievementSummaryResp struct {
 	TotalReputation  int                              `json:"total_reputation"`
 	BadgeCount       int                              `json:"badge_count"`
+	MaxBadges        int                              `json:"max_badges"`
 	Badges           []*GetUserBadgeAwardListResp     `json:"badges"`
 	RecentActivities []*GetUserAchievementResp        `json:"recent_activities"`
 }

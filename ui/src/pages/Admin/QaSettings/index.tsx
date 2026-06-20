@@ -61,6 +61,11 @@ const QaSettings = () => {
         title: t('restrict_answer.label'),
         description: t('restrict_answer.text'),
       },
+      anonymity_enable: {
+        type: 'boolean',
+        title: t('anonymity_enable.label'),
+        description: t('anonymity_enable.text'),
+      },
     },
   };
   const uiSchema: UISchema = {
@@ -82,6 +87,12 @@ const QaSettings = () => {
         label: t('restrict_answer.label'),
       },
     },
+    anonymity_enable: {
+      'ui:widget': 'switch',
+      'ui:options': {
+        label: t('anonymity_enable.label'),
+      },
+    },
   };
   const [formData, setFormData] = useState<Type.FormDataType>(
     initFormData(schema),
@@ -99,6 +110,7 @@ const QaSettings = () => {
       min_tags: formData.min_tags.value,
       min_content: formData.min_content.value,
       restrict_answer: formData.restrict_answer.value,
+      anonymity_enable: formData.anonymity_enable.value,
     };
     updateQuestionSetting(reqParams)
       .then(() => {
@@ -125,6 +137,7 @@ const QaSettings = () => {
         formMeta.min_tags.value = res.min_tags;
         formMeta.min_content.value = res.min_content;
         formMeta.restrict_answer.value = res.restrict_answer;
+        formMeta.anonymity_enable.value = res.anonymity_enable;
         console.log('res', res, formMeta);
         setFormData(formMeta);
       }

@@ -129,7 +129,7 @@ const Index: FC<Props> = ({ visible, introduction, data, username, userId }) => 
                     className="text-success mb-2"
                   />
                   <div className="h3 mb-1">
-                    {achievementSummary.badges_count}/50
+                    {achievementSummary.badges_count}/{achievementSummary.max_badges || 50}
                   </div>
                   <div className="small text-secondary">
                     {t('achievement.badges_earned')}

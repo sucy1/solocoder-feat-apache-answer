@@ -168,6 +168,7 @@ func (as *AchievementService) GetUserAchievementSummary(
 	return &schema.GetUserAchievementSummaryResp{
 		TotalReputation:  totalReputation,
 		BadgeCount:       int(badgeCount),
+		MaxBadges:        as.getMaxBadges(ctx),
 		Badges:           badges,
 		RecentActivities: recentActivities,
 	}, nil
